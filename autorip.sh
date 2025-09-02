@@ -1,13 +1,11 @@
 #!/bin/bash
 #
-# Autorip-Skript mit eingebetteter abcde-Konfig-Aufruf
+# Autorip-Skript mit eigener abcde-Konfiguration
 #
 
-# Verzeichnis des Skripts ermitteln
+# Pfade
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 CONF="$SCRIPT_DIR/abcde.conf"
-
-# CD-Laufwerk
 CDDEV="/dev/cdrom"
 
 # Log-Verzeichnis
@@ -17,36 +15,33 @@ DATE=$(date +"%Y-%m-%d_%H-%M-%S")
 LOGFILE="$LOGDIR/rip_$DATE.log"
 
 echo "==============================================="
-echo "Starte Ripping: $DATE"
+echo "📀 Starte Ripping: $DATE"
 echo "CD-Laufwerk: $CDDEV"
+echo "Konfiguration: $CONF"
 echo "Logfile: $LOGFILE"
 echo "==============================================="
 
-# CD-Info anzeigen
-echo "Lese CD-Informationen..."
-abcde -c "$CONF" -d "$CDDEV" -i
-
-# Ripping starten mit Live-Status
-echo "Starte Ripping..."
-abcde -c "$CONF" -d "$CDDEV" -N -o flac,mp3 | while IFS= read -r line; do
+# Direkt Ripping mit Live-Status starten
+echo "🎶 Starte Ripping..."
+abcde -c "$CONF" -d "$CDDEV" -N -o flac,mp3 2>&1 | tee >(while IFS= read -r line; do
     if [[ $line == *"Ripping track"* ]]; then
         echo "🎵 $line"
-    elif [[ $line == *"Writing"* ]]; then
+    elif [[ $line == *"Encoding"* ]]; then
         echo "💾 $line"
-    else
-        echo "$line"
+    elif [[ $line == *"Writing"* ]]; then
+        echo "📂 $line"
     fi
-done >>"$LOGFILE" 2>&1
+done) >>"$LOGFILE"
 
 # Erfolg prüfen
-if [ $? -eq 0 ]; then
+if [ ${PIPESTATUS[0]} -eq 0 ]; then
     echo "✅ Ripping erfolgreich abgeschlossen."
 else
     echo "❌ Fehler beim Ripping. Siehe Logfile: $LOGFILE"
 fi
 
 # CD auswerfen
-echo "Werfe CD aus..."
+echo "⏏️  Werfe CD aus..."
 eject "$CDDEV"
 
 echo "Fertig: $DATE"
